@@ -96,6 +96,75 @@ void Stepper::handle()
   }
 }
 
+void Stepper::_calcDelay()
+{
+  int32_t diff = _diffModulo(_stepTarget - _stepAct);
+  // constant speed?
+  if (_rampConst == 0)
+  {
+    _direction = (diff > 0) ? dirPos : (diff < 0) ? dirNeg : dirStop;
+    _delayStep = _delayMax;
+    return;
+  }
+
+  // Stop when in Target
+  int32_t stepsStop = _rampConst / (_delayStep * _delayStep);
+  if ((diff == 0) && (stepsStop <= 1))
+  {
+    _direction = dirStop;
+    _delayStep = 0;
+    _rampStep = 0;
+    return;
+  }
+
+  // Positive turn needed
+  if (diff > 0)
+  {
+    if (_rampStep > 0) // accelerating or constant speed?
+    {
+      if ((stepsStop >= diff) || (_direction == dirNeg))
+      {
+        _rampStep = -stepsStop;
+      }
+    }
+    else if (_rampStep < 0) // decelerating?
+    {
+      if ((stepsStop < diff) && (_direction == dirPos))
+      {
+        _rampStep = -_rampStep;
+      }
+    }
+  }
+  else if (diff < 0)
+  {
+    if (_rampStep > 0) // accelerating?
+    {
+      if ((stepsStop >= -diff) || (_direction == dirPos))
+      {
+        _rampStep = -stepsStop;
+      }
+    }
+    else if (_rampStep < 0) // decelerating?
+    {
+      if ((stepsStop < -diff) && (_direction == dirNeg))
+      {
+        _rampStep = -_rampStep;
+      }
+    }
+  }
+
+  if (_rampStep == 0)
+  {
+    _direction = (diff > 0) ? dirPos : dirNeg;
+    _delayStep = _delayMax;
+  }
+  else
+  {
+    _delayStep = max(_delayStep - ((2 * _delayStep) / ((4 * _rampStep) + 1)), _delayMin);
+  }
+  _rampStep++;
+}
+
 // set new target position
 void Stepper::setIncrements(int32_t pos)
 {
@@ -316,73 +385,4 @@ void Stepper::_powerOff()
   digitalWrite(_pin2, 0);
   digitalWrite(_pin3, 0);
   digitalWrite(_pin4, 0);
-}
-
-void Stepper::_calcDelay()
-{
-  int32_t diff = _diffModulo(_stepTarget - _stepAct);
-  // constant speed?
-  if (_rampConst == 0)
-  {
-    _direction = (diff > 0) ? dirPos : (diff < 0) ? dirNeg : dirStop;
-    _delayStep = _delayMax;
-    return;
-  }
-
-  // Stop when in Target
-  int32_t stepsStop = _rampConst / (_delayStep * _delayStep);
-  if ((diff == 0) && (stepsStop <= 1))
-  {
-    _direction = dirStop;
-    _delayStep = 0;
-    _rampStep = 0;
-    return;
-  }
-
-  // Positive turn needed
-  if (diff > 0)
-  {
-    if (_rampStep > 0) // accelerating or constant speed?
-    {
-      if ((stepsStop >= diff) || (_direction == dirNeg))
-      {
-        _rampStep = -stepsStop;
-      }
-    }
-    else if (_rampStep < 0) // decelerating?
-    {
-      if ((stepsStop < diff) && (_direction == dirPos))
-      {
-        _rampStep = -_rampStep;
-      }
-    }
-  }
-  else if (diff < 0)
-  {
-    if (_rampStep > 0) // accelerating?
-    {
-      if ((stepsStop >= -diff) || (_direction == dirPos))
-      {
-        _rampStep = -stepsStop;
-      }
-    }
-    else if (_rampStep < 0) // decelerating?
-    {
-      if ((stepsStop < -diff) && (_direction == dirNeg))
-      {
-        _rampStep = -_rampStep;
-      }
-    }
-  }
-
-  if (_rampStep == 0)
-  {
-    _direction = (diff > 0) ? dirPos : dirNeg;
-    _delayStep = _delayMax;
-  }
-  else
-  {
-    _delayStep = max(_delayStep - ((2 * _delayStep) / ((4 * _rampStep) + 1)), _delayMin);
-  }
-  _rampStep++;
 }
