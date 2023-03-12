@@ -31,7 +31,10 @@ Stepper::Stepper(uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4)
   _gearRatio = 1.0;
   _upperLimit = 0x7fffffff;
   _lowerLimit = 0x80000001;
-  _delayStep = 1250;
+  _delayMin = 1250;
+  _delayMax = _delayMin;
+  _delayStep = _delayMin;
+  _rampConst = 0;
   _delayPowersave = 1000000;
   _timeLastStep = micros() + _delayStep;
   
@@ -72,15 +75,17 @@ void Stepper::handle()
       if (_stepUp())
       {
         _stepAct = _trimModulo(_stepAct + 1);
+        _calcDelay();
       }
       _timeLastStep = now;
     }
-    if (diff < 0)
+    else if (diff < 0)
     {      
       // count step only when backlash fully compensated
       if(_stepDown())
       {
         _stepAct = _trimModulo(_stepAct - 1);
+        _calcDelay();
       }
       _timeLastStep = now;
     }
@@ -201,9 +206,24 @@ void Stepper::setBacklash(int32_t steps)
 }
 
 // override stepper frequency
-void Stepper::setFrequency(uint16_t freq)
+void Stepper::setFrequency(uint16_t freqMax, uint16_t acc)
 {
-  _delayStep = 1000000UL / freq;
+  if (freqMax > 0)
+  {
+    _delayMin = 1000000UL / freqMax;
+  }
+  if (acc > 0)
+  {
+//    _delayMax = (long)(676000.0 * sqrt((float)accTime / ((float)freqMax * 500.0)));
+    _delayMax = (long)(676000.0 * sqrt(2.0 / ((float)acc)));
+    _rampConst = 250000UL * _delayMin;
+  }
+  else
+  {
+    _delayMax = _delayMin;
+    _rampConst = 0;
+  }
+  _delayStep = _delayMax;
 }
 
 // make this a modulo axis
@@ -296,4 +316,73 @@ void Stepper::_powerOff()
   digitalWrite(_pin2, 0);
   digitalWrite(_pin3, 0);
   digitalWrite(_pin4, 0);
+}
+
+void Stepper::_calcDelay()
+{
+  int32_t diff = _diffModulo(_stepTarget - _stepAct);
+  // constant speed?
+  if (_rampConst == 0)
+  {
+    _direction = (diff > 0) ? dirPos : (diff < 0) ? dirNeg : dirStop;
+    _delayStep = _delayMax;
+    return;
+  }
+
+  // Stop when in Target
+  int32_t stepsStop = _rampConst / (_delayStep * _delayStep);
+  if ((diff == 0) && (stepsStop <= 1))
+  {
+    _direction = dirStop;
+    _delayStep = 0;
+    _rampStep = 0;
+    return;
+  }
+
+  // Positive turn needed
+  if (diff > 0)
+  {
+    if (_rampStep > 0) // accelerating or constant speed?
+    {
+      if ((stepsStop >= diff) || (_direction == dirNeg))
+      {
+        _rampStep = -stepsStop;
+      }
+    }
+    else if (_rampStep < 0) // decelerating?
+    {
+      if ((stepsStop < diff) && (_direction == dirPos))
+      {
+        _rampStep = -_rampStep;
+      }
+    }
+  }
+  else if (diff < 0)
+  {
+    if (_rampStep > 0) // accelerating?
+    {
+      if ((stepsStop >= -diff) || (_direction == dirPos))
+      {
+        _rampStep = -stepsStop;
+      }
+    }
+    else if (_rampStep < 0) // decelerating?
+    {
+      if ((stepsStop < -diff) && (_direction == dirNeg))
+      {
+        _rampStep = -_rampStep;
+      }
+    }
+  }
+
+  if (_rampStep == 0)
+  {
+    _direction = (diff > 0) ? dirPos : dirNeg;
+    _delayStep = _delayMax;
+  }
+  else
+  {
+    _delayStep = max(_delayStep - ((2 * _delayStep) / ((4 * _rampStep) + 1)), _delayMin);
+  }
+  _rampStep++;
 }
