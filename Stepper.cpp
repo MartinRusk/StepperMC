@@ -173,8 +173,9 @@ void Stepper::_calcDelay()
       _stepsStop = _rampConst / (_cycle * _cycle); 
     }
   }
-  // upper limit for delay
+  // set current delay
   _delayStep = (unsigned long)_cycle;
+  // next rampStep
   _rampStep++;
 }
 
@@ -275,19 +276,19 @@ void Stepper::setZero()
   _stepTarget = 0;
 }
 
-// adjust position by some steps
+// adjust zero position by some steps
 void Stepper::adjustZero(int32_t steps)
 {
   _stepAct -= steps;
 }
 
-// adjust position by some steps
+// set backlash compensation
 void Stepper::setBacklash(int32_t steps)
 {
   _backlash = steps;
 }
 
-// override stepper frequency
+// set constant speed
 void Stepper::setSpeed(uint16_t freq)
 {
   if (freq > 0)
@@ -296,7 +297,7 @@ void Stepper::setSpeed(uint16_t freq)
   }
 }
 
-// override stepper frequency
+// set dynamic speed ramping
 void Stepper::setSpeed(uint16_t freq, uint16_t acc)
 {
   if ((freq > 0) && (acc > 0))
