@@ -294,6 +294,7 @@ void Stepper::setSpeed(uint16_t freq)
   if (freq > 0)
   {
     _delayStep = 1000000UL / freq;
+    _rampConst = 0;
   }
 }
 
