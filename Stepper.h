@@ -49,13 +49,11 @@ private:
   float _feedConst;
   float _gearRatio;
   bool _negDir;
-
   // motor pin numbers
   uint8_t _pin1;
   uint8_t _pin2;
   uint8_t _pin3;
   uint8_t _pin4;
-  
   //timing
   unsigned long _delayPowersave;
   unsigned long _timeLastStep;
@@ -73,7 +71,6 @@ private:
     dirPos,
     dirNeg
   } _direction;
-
 };
 
 #endif
