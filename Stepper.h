@@ -26,7 +26,7 @@ public:
   void reverseDir(bool neg);
   void setPowersaveTime(uint16_t seconds);
 
-// private:
+private:
   bool _stepUp();
   bool _stepDown();
   void _step();
