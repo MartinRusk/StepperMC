@@ -21,8 +21,8 @@ public:
   void setModulo(uint16_t steps);
   void setUnlimited();
   void setPositionLimit(float lower, float upper);
-  void setFrequency(uint16_t freq);
-  void setRamp(uint16_t freqMax, uint16_t acc);
+  void setSpeed(uint16_t freq);
+  void setSpeed(uint16_t freqMax, uint16_t acc);
   void reverseDir(bool neg);
   void setPowersaveTime(uint16_t seconds);
 
@@ -60,13 +60,13 @@ public:
   unsigned long _delayPowersave;
   unsigned long _timeLastStep;
   unsigned long _delayStep;
-  unsigned long _delayMax;
   // ramp
   float _cycle;
   float _cycleMin;
   float _cycleMax;
   float _rampConst;
   int32_t _rampStep;
+  int32_t _stepsStop;
   enum
   {
     dirStop,

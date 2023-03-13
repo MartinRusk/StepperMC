@@ -32,13 +32,13 @@ Stepper::Stepper(uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4, uint16_
   _gearRatio = 1.0;
   _upperLimit = 0x7fffffff;
   _lowerLimit = 0x80000001;
-  _delayMax = 1250;
-  _delayStep = _delayMax;
+  _delayStep = 1250;
   _cycle = 0;
   _cycleMin = 0;
   _cycleMax = 0;
   _rampConst = 0;
   _rampStep = 0;
+  _stepsStop = 0;
   _delayPowersave = 1000000;
   _timeLastStep = micros() + _delayStep;
   
@@ -65,6 +65,8 @@ void Stepper::handle()
   unsigned long now = micros();
   if (now > _timeLastStep + _delayStep)
   {
+    // get new direction and step delay
+    _calcDelay();    
     // do one step in the right direction
     if (_direction == dirPos)
     {
@@ -84,8 +86,6 @@ void Stepper::handle()
       }
       _timeLastStep = now;
     }
-    // get new direction and step delay
-    _calcDelay();
     // activate powersave on standstill
     if ((_delayPowersave > 0) && (now > _timeLastStep + _delayPowersave))
     {
@@ -106,14 +106,12 @@ void Stepper::_calcDelay()
     _direction = (diff > 0) ? dirPos : (diff < 0) ? dirNeg : dirStop;
     return;
   }
-  // get stopping distance
-  int32_t stepsStop = _rampConst / (_cycle * _cycle);
   // Stop when in Target
-  if ((diff == 0) && (abs(stepsStop) <= 10))
+  if ((diff == 0) && (_stepsStop <= 5))
   {
     _direction = dirStop;
     _cycle = _cycleMax;
-    _delayStep = _delayMax;
+    _delayStep = 0;
     _rampStep = 0;
     return;
   }
@@ -122,15 +120,15 @@ void Stepper::_calcDelay()
   {
     if (_rampStep > 0) // accelerating or constant speed?
     {
-      if ((stepsStop >= diff) || (_direction == dirNeg))
+      if ((_stepsStop >= diff) || (_direction == dirNeg))
       { 
         // start deceleration
-        _rampStep = -stepsStop;
+        _rampStep = -_stepsStop;
       }
     }
     else if (_rampStep < 0) // decelerating?
     {
-      if ((stepsStop < diff) && (_direction == dirPos))
+      if ((_stepsStop < diff) && (_direction == dirPos))
       {
         // accelerate again
         _rampStep = -_rampStep;
@@ -141,15 +139,15 @@ void Stepper::_calcDelay()
   {
     if (_rampStep > 0) // accelerating or constant speed?
     {
-      if ((stepsStop >= -diff) || (_direction == dirPos))
+      if ((_stepsStop >= -diff) || (_direction == dirPos))
       {
         // start deceleration
-        _rampStep = -stepsStop;
+        _rampStep = -_stepsStop;
       }
     }
     else if (_rampStep < 0) // decelerating?
     {
-      if ((stepsStop < -diff) && (_direction == dirNeg))
+      if ((_stepsStop < -diff) && (_direction == dirNeg))
       {
         // accelerate again
         _rampStep = -_rampStep;
@@ -162,6 +160,8 @@ void Stepper::_calcDelay()
     // set required direction to target and reinitialize cycle time
     _direction = (diff > 0) ? dirPos : dirNeg;
     _cycle = _cycleMax;
+    // get new stopping distance
+    _stepsStop = _rampConst / (_cycle * _cycle);
   }
   else
   {
@@ -169,11 +169,12 @@ void Stepper::_calcDelay()
     if (_cycle > _cycleMin || _rampStep < 0)
     {
       _cycle = _cycle - ((2.0 * _cycle) / ((4 * _rampStep) + 1));
-      
+      // get new stopping distance
+      _stepsStop = _rampConst / (_cycle * _cycle); 
     }
   }
   // upper limit for delay
-  _delayStep = min((unsigned long)_cycle, _delayMax);
+  _delayStep = (unsigned long)_cycle;
   _rampStep++;
 }
 
@@ -287,31 +288,23 @@ void Stepper::setBacklash(int32_t steps)
 }
 
 // override stepper frequency
-void Stepper::setFrequency(uint16_t freq)
+void Stepper::setSpeed(uint16_t freq)
 {
   if (freq > 0)
   {
-    _delayMax = 1000000UL / freq;
-    _delayStep = _delayMax;
+    _delayStep = 1000000UL / freq;
   }
 }
 
 // override stepper frequency
-void Stepper::setRamp(uint16_t freqMax, uint16_t acc)
+void Stepper::setSpeed(uint16_t freq, uint16_t acc)
 {
-  if ((freqMax > 0) && (acc > 0))
+  if ((freq > 0) && (acc > 0))
   {
-    _cycleMin = 1000000.0 / (float)freqMax;
+    _cycleMin = 1000000.0 / (float)freq;
     _cycleMax = 676000.0 * sqrt(2.0 / ((float)acc));
     _cycle = _cycleMax;
     _rampConst = 250000.0 * _cycleMin;
-  }
-  else
-  {
-    _cycleMin = 0;
-    _cycleMax = 0;
-    _cycle = 0;
-    _rampConst = 0;
   }
 }
 
