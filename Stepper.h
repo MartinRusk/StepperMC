@@ -4,8 +4,7 @@
 class Stepper
 {
 public:
-  Stepper(uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4);
-  Stepper(uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4, uint16_t steps);
+  Stepper(uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4, uint16_t steps = 4096);
   void handle();
   void setIncrements(int32_t pos);
   void setIncrementsRelative(int32_t steps);
@@ -22,12 +21,12 @@ public:
   void setModulo(uint16_t steps);
   void setUnlimited();
   void setPositionLimit(float lower, float upper);
-  // void setFrequency(uint16_t freq);
-  void setFrequency(uint16_t freq, uint16_t accTime = 0);
+  void setFrequency(uint16_t freq);
+  void setRamp(uint16_t freqMax, uint16_t acc);
   void reverseDir(bool neg);
   void setPowersaveTime(uint16_t seconds);
 
-private:
+// private:
   bool _stepUp();
   bool _stepDown();
   void _step();
@@ -59,12 +58,14 @@ private:
   
   //timing
   unsigned long _delayPowersave;
-  // ramp
   unsigned long _timeLastStep;
   unsigned long _delayStep;
-  unsigned long _delayMin;
   unsigned long _delayMax;
-  int32_t _rampConst;
+  // ramp
+  float _cycle;
+  float _cycleMin;
+  float _cycleMax;
+  float _rampConst;
   int32_t _rampStep;
   enum
   {

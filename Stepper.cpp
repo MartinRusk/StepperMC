@@ -15,26 +15,30 @@ const uint8_t phase_scheme[8][4] =
 };
 
 // constructor
-Stepper::Stepper(uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4)
+Stepper::Stepper(uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4, uint16_t steps)
 {
   // Initialize variables
   _stepAct = 0;
   _stepTarget = 0;
+  _direction = dirStop;
   _backlash = 0;
   _backlashAct = 0;
   _stepMotor = 0;
   _isModulo = false;
   _isLimited = false;
-  _stepsTurn = 4096;
+  _stepsTurn = steps;
   _stepsModulo = 0;
   _feedConst = _stepsTurn / 360.0;
   _gearRatio = 1.0;
   _upperLimit = 0x7fffffff;
   _lowerLimit = 0x80000001;
-  _delayMin = 1250;
-  _delayMax = _delayMin;
-  _delayStep = _delayMin;
+  _delayMax = 1250;
+  _delayStep = _delayMax;
+  _cycle = 0;
+  _cycleMin = 0;
+  _cycleMax = 0;
   _rampConst = 0;
+  _rampStep = 0;
   _delayPowersave = 1000000;
   _timeLastStep = micros() + _delayStep;
   
@@ -54,41 +58,35 @@ Stepper::Stepper(uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4)
   _powerOff();
 }
 
-// variable steps (e.g. with gear)
-Stepper::Stepper(uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4, uint16_t steps) : Stepper(pin1, pin2, pin3, pin4) 
-{
-  _stepsTurn = steps;
-}
-
 // cyclic handle of motion (call in loop)
 void Stepper::handle()
 {
-  // check if next step can be executed (rate limitation)
+  // check if next step can be executed
   unsigned long now = micros();
   if (now > _timeLastStep + _delayStep)
   {
     // do one step in the right direction
-    int32_t diff = _diffModulo(_stepTarget - _stepAct);
-    if (diff > 0)
+    if (_direction == dirPos)
     {
       // count step only when backlash fully compensated
       if (_stepUp())
       {
         _stepAct = _trimModulo(_stepAct + 1);
-        _calcDelay();
       }
       _timeLastStep = now;
     }
-    else if (diff < 0)
+    else if (_direction == dirNeg)
     {      
       // count step only when backlash fully compensated
       if(_stepDown())
       {
         _stepAct = _trimModulo(_stepAct - 1);
-        _calcDelay();
       }
       _timeLastStep = now;
     }
+    // get new direction and step delay
+    _calcDelay();
+    // activate powersave on standstill
     if ((_delayPowersave > 0) && (now > _timeLastStep + _delayPowersave))
     {
       _powerOff();
@@ -96,34 +94,37 @@ void Stepper::handle()
   }
 }
 
+// update ramp and calculate new step delay 
 void Stepper::_calcDelay()
 {
+  // get distance to target
   int32_t diff = _diffModulo(_stepTarget - _stepAct);
-  // constant speed?
+  // no ramp? 
   if (_rampConst == 0)
   {
+    // set direction and exit
     _direction = (diff > 0) ? dirPos : (diff < 0) ? dirNeg : dirStop;
-    _delayStep = _delayMax;
     return;
   }
-
+  // get stopping distance
+  int32_t stepsStop = _rampConst / (_cycle * _cycle);
   // Stop when in Target
-  int32_t stepsStop = _rampConst / (_delayStep * _delayStep);
-  if ((diff == 0) && (stepsStop <= 1))
+  if ((diff == 0) && (abs(stepsStop) <= 10))
   {
     _direction = dirStop;
-    _delayStep = 0;
+    _cycle = _cycleMax;
+    _delayStep = _delayMax;
     _rampStep = 0;
     return;
   }
-
-  // Positive turn needed
-  if (diff > 0)
+  // detect necessary switch between acceleration and deceleration
+  if (diff > 0) // positive turn needed?
   {
     if (_rampStep > 0) // accelerating or constant speed?
     {
       if ((stepsStop >= diff) || (_direction == dirNeg))
-      {
+      { 
+        // start deceleration
         _rampStep = -stepsStop;
       }
     }
@@ -131,16 +132,18 @@ void Stepper::_calcDelay()
     {
       if ((stepsStop < diff) && (_direction == dirPos))
       {
+        // accelerate again
         _rampStep = -_rampStep;
       }
     }
   }
-  else if (diff < 0)
+  else if (diff < 0) // negative turn needed?
   {
-    if (_rampStep > 0) // accelerating?
+    if (_rampStep > 0) // accelerating or constant speed?
     {
       if ((stepsStop >= -diff) || (_direction == dirPos))
       {
+        // start deceleration
         _rampStep = -stepsStop;
       }
     }
@@ -148,20 +151,29 @@ void Stepper::_calcDelay()
     {
       if ((stepsStop < -diff) && (_direction == dirNeg))
       {
+        // accelerate again
         _rampStep = -_rampStep;
       }
     }
   }
-
-  if (_rampStep == 0)
+  // on zero crossing 
+  if (_rampStep == 0) 
   {
+    // set required direction to target and reinitialize cycle time
     _direction = (diff > 0) ? dirPos : dirNeg;
-    _delayStep = _delayMax;
+    _cycle = _cycleMax;
   }
   else
   {
-    _delayStep = max(_delayStep - ((2 * _delayStep) / ((4 * _rampStep) + 1)), _delayMin);
+    // update cycle time when not final speed reached
+    if (_cycle > _cycleMin || _rampStep < 0)
+    {
+      _cycle = _cycle - ((2.0 * _cycle) / ((4 * _rampStep) + 1));
+      
+    }
   }
+  // upper limit for delay
+  _delayStep = min((unsigned long)_cycle, _delayMax);
   _rampStep++;
 }
 
@@ -275,24 +287,32 @@ void Stepper::setBacklash(int32_t steps)
 }
 
 // override stepper frequency
-void Stepper::setFrequency(uint16_t freqMax, uint16_t acc)
+void Stepper::setFrequency(uint16_t freq)
 {
-  if (freqMax > 0)
+  if (freq > 0)
   {
-    _delayMin = 1000000UL / freqMax;
+    _delayMax = 1000000UL / freq;
+    _delayStep = _delayMax;
   }
-  if (acc > 0)
+}
+
+// override stepper frequency
+void Stepper::setRamp(uint16_t freqMax, uint16_t acc)
+{
+  if ((freqMax > 0) && (acc > 0))
   {
-//    _delayMax = (long)(676000.0 * sqrt((float)accTime / ((float)freqMax * 500.0)));
-    _delayMax = (long)(676000.0 * sqrt(2.0 / ((float)acc)));
-    _rampConst = 250000UL * _delayMin;
+    _cycleMin = 1000000.0 / (float)freqMax;
+    _cycleMax = 676000.0 * sqrt(2.0 / ((float)acc));
+    _cycle = _cycleMax;
+    _rampConst = 250000.0 * _cycleMin;
   }
   else
   {
-    _delayMax = _delayMin;
+    _cycleMin = 0;
+    _cycleMax = 0;
+    _cycle = 0;
     _rampConst = 0;
   }
-  _delayStep = _delayMax;
 }
 
 // make this a modulo axis
