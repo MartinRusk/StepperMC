@@ -162,6 +162,8 @@ void Stepper::_calcDelay()
     _cycle = _cycleMax;
     // get new stopping distance
     _stepsStop = _rampConst / (_cycle * _cycle);
+    // next rampStep
+    _rampStep++;
   }
   else
   {
@@ -171,12 +173,12 @@ void Stepper::_calcDelay()
       _cycle = _cycle - ((2.0 * _cycle) / ((4 * _rampStep) + 1));
       // get new stopping distance
       _stepsStop = _rampConst / (_cycle * _cycle); 
+      // next rampStep
+      _rampStep++;
     }
   }
   // set current delay
   _delayStep = (unsigned long)_cycle;
-  // next rampStep
-  _rampStep++;
 }
 
 // set new target position
