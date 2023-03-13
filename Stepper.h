@@ -14,6 +14,7 @@ public:
   float getPosition();
   void moveTarget();
   bool inTarget();
+  void stop();
   void setZero();
   void adjustZero(int32_t steps);
   void setBacklash(int32_t steps);

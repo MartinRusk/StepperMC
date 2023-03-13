@@ -260,6 +260,18 @@ bool Stepper::inTarget()
   return (_stepTarget == _stepAct);
 }
 
+void Stepper::stop()
+{
+  if (_direction == dirPos)
+  {
+    _stepTarget = _trimModulo(_stepAct + _stepsStop);
+  }
+  else if (_direction == dirNeg)
+  {
+    _stepTarget = _trimModulo(_stepAct - _stepsStop);
+  }
+}
+
 // wait and handle steps until target position reached
 void Stepper::moveTarget()
 {
