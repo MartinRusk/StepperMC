@@ -1,10 +1,10 @@
 #ifndef Stepper_h
 #define Stepper_h
 
-class Stepper
+class StepperMC
 {
 public:
-  Stepper(uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4, uint16_t steps = 4096);
+  StepperMC(uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4, uint16_t steps = 4096);
   void handle();
   void setIncrements(int32_t pos);
   void setIncrementsRelative(int32_t steps);

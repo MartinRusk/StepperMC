@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include "Stepper.h"
+#include "StepperMC.h"
 
 // stepping scheme for the motor
 const uint8_t phase_scheme[8][4] = 
@@ -15,7 +15,7 @@ const uint8_t phase_scheme[8][4] =
 };
 
 // constructor
-Stepper::Stepper(uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4, uint16_t steps)
+StepperMC::StepperMC(uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4, uint16_t steps)
 {
   // Initialize variables
   _stepAct = 0;
@@ -59,7 +59,7 @@ Stepper::Stepper(uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4, uint16_
 }
 
 // cyclic handle of motion (call in loop)
-void Stepper::handle()
+void StepperMC::handle()
 {
   // check if next step can be executed
   unsigned long now = micros();
@@ -95,7 +95,7 @@ void Stepper::handle()
 }
 
 // update ramp and calculate new step delay 
-void Stepper::_calcDelay()
+void StepperMC::_calcDelay()
 {
   // get distance to target
   int32_t diff = _diffModulo(_stepTarget - _stepAct);
@@ -182,7 +182,7 @@ void Stepper::_calcDelay()
 }
 
 // set new target position
-void Stepper::setIncrements(int32_t pos)
+void StepperMC::setIncrements(int32_t pos)
 {
   if (_isLimited)
   {
@@ -193,25 +193,25 @@ void Stepper::setIncrements(int32_t pos)
 }
 
 // set relative target position
-void Stepper::setIncrementsRelative(int32_t steps)
+void StepperMC::setIncrementsRelative(int32_t steps)
 {
   setIncrements(_stepTarget + steps);
 }
 
 // set new target position
-void Stepper::setPosition(float pos)
+void StepperMC::setPosition(float pos)
 {
   setIncrements((int32_t)(pos * _feedConst));
 }
 
 // set new target position relative
-void Stepper::setPositionRelative(float pos)
+void StepperMC::setPositionRelative(float pos)
 {
   setIncrementsRelative((int32_t)(pos * _feedConst));
 }
 
 // automatic trim position in modulo range
-int32_t Stepper::_trimModulo(int32_t pos)
+int32_t StepperMC::_trimModulo(int32_t pos)
 {
   if (_isModulo) 
   {
@@ -228,7 +228,7 @@ int32_t Stepper::_trimModulo(int32_t pos)
 }
 
 // automatic trim position difference in modulo range
-int32_t Stepper::_diffModulo(int32_t diff)
+int32_t StepperMC::_diffModulo(int32_t diff)
 {
   if (_isModulo)
   {
@@ -245,24 +245,24 @@ int32_t Stepper::_diffModulo(int32_t diff)
 }
 
 // return actual position
-int32_t Stepper::getIncrements()
+int32_t StepperMC::getIncrements()
 {
   return (_stepAct);
 }
 
 // get new cuurrent position
-float Stepper::getPosition()
+float StepperMC::getPosition()
 {
   return (float) _stepAct / _feedConst;
 }
 
 // check if target position reached
-bool Stepper::inTarget()
+bool StepperMC::inTarget()
 {
   return (_stepTarget == _stepAct);
 }
 
-void Stepper::stop()
+void StepperMC::stop()
 {
   if (_direction == dirPos)
   {
@@ -275,7 +275,7 @@ void Stepper::stop()
 }
 
 // wait and handle steps until target position reached
-void Stepper::moveTarget()
+void StepperMC::moveTarget()
 {
   while (!inTarget())
   {
@@ -284,26 +284,26 @@ void Stepper::moveTarget()
 }
 
 // set actual and target position to zero
-void Stepper::setZero()
+void StepperMC::setZero()
 {
   _stepAct = 0;
   _stepTarget = 0;
 }
 
 // adjust zero position by some steps
-void Stepper::adjustZero(int32_t steps)
+void StepperMC::adjustZero(int32_t steps)
 {
   _stepAct -= steps;
 }
 
 // set backlash compensation
-void Stepper::setBacklash(int32_t steps)
+void StepperMC::setBacklash(int32_t steps)
 {
   _backlash = steps;
 }
 
 // set constant speed
-void Stepper::setSpeed(uint16_t freq)
+void StepperMC::setSpeed(uint16_t freq)
 {
   if (freq > 0)
   {
@@ -313,7 +313,7 @@ void Stepper::setSpeed(uint16_t freq)
 }
 
 // set dynamic speed ramping
-void Stepper::setSpeed(uint16_t freq, uint16_t acc)
+void StepperMC::setSpeed(uint16_t freq, uint16_t acc)
 {
   if ((freq > 0) && (acc > 0))
   {
@@ -325,7 +325,7 @@ void Stepper::setSpeed(uint16_t freq, uint16_t acc)
 }
 
 // make this a modulo axis
-void Stepper::setModulo(uint16_t steps)
+void StepperMC::setModulo(uint16_t steps)
 {
   _isModulo = true;
   _isLimited = false;
@@ -333,7 +333,7 @@ void Stepper::setModulo(uint16_t steps)
 }
 
 // remove limits and modulo
-void Stepper::setUnlimited()
+void StepperMC::setUnlimited()
 {
   _isLimited = false;
   _isModulo = false;
@@ -343,7 +343,7 @@ void Stepper::setUnlimited()
 }
 
 // set software limits
-void Stepper::setPositionLimit(float lower, float upper)
+void StepperMC::setPositionLimit(float lower, float upper)
 {
   _isLimited = true;
   _isModulo = false;
@@ -352,23 +352,23 @@ void Stepper::setPositionLimit(float lower, float upper)
 }
 
 // Feedrate per turn (default 360)
-void Stepper::setFeedConst(float feed)
+void StepperMC::setFeedConst(float feed)
 {
   _feedConst = _stepsTurn / feed;
 }
 
 // invert direction
-void Stepper::reverseDir(bool neg)
+void StepperMC::reverseDir(bool neg)
 {
   _negDir = neg;
 }
 
-void Stepper::setPowersaveTime(uint16_t seconds)
+void StepperMC::setPowersaveTime(uint16_t seconds)
 {
   _delayPowersave = 1000000UL * seconds;
 }
 
-bool Stepper::_stepUp()
+bool StepperMC::_stepUp()
 {
   _stepMotor++;
   _step();
@@ -380,7 +380,7 @@ bool Stepper::_stepUp()
   return true;
 }
 
-bool Stepper::_stepDown()
+bool StepperMC::_stepDown()
 {
   _stepMotor--;
   _step();
@@ -393,7 +393,7 @@ bool Stepper::_stepDown()
 }
 
 // execute one step
-void Stepper::_step()
+void StepperMC::_step()
 {
   int phase = (int)(_stepMotor & 0x07);
   if (_negDir)
@@ -408,7 +408,7 @@ void Stepper::_step()
 }
 
 // switch power off
-void Stepper::_powerOff()
+void StepperMC::_powerOff()
 {
   digitalWrite(_pin1, 0);
   digitalWrite(_pin2, 0);

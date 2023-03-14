@@ -1,6 +1,6 @@
 {
   "name": "Stepper MotionControl",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "General purpose stepper library with advanced motion commands supporting engineering units",
   "keywords": "motion, stepper, arduino",
   "authors": [
@@ -11,7 +11,7 @@
     }
   ],
   "license": "GPLV3",
-  "homepage": "",
+  "homepage": "https://github.com/MartinRusk/StepperMC",
   "dependencies": {
   },
   "frameworks": "*",
