@@ -345,15 +345,24 @@ void StepperMC::setSpeed(uint16_t freq, uint16_t acc)
   }
 }
 
-// make this a modulo axis
+// make this a modulo axis. 
+// default (steps = 0): modulo distance = one turn on load side (nothing else is sensible)
+// take care with uneven gear ratios! no handling of fractional parts!
 void StepperMC::setModulo(uint16_t steps)
 {
   _isModulo = true;
   _isLimited = false;
-  _stepsModulo = steps;
+  if (steps == 0)
+  {
+    _stepsModulo = _stepsTurn / _gearRatio;
+  }
+  else
+  {
+    _stepsModulo = steps;
+  }
 }
 
-// remove limits and modulo
+// make unlimited. remove all limits and modulo
 void StepperMC::setUnlimited()
 {
   _isLimited = false;
@@ -372,10 +381,16 @@ void StepperMC::setPositionLimit(float lower, float upper)
   _upperLimit = upper * _feedConst; 
 }
 
-// Feedrate per turn (default 360)
+// set gear ratio (set before setting feed constant and modulo!)
+void StepperMC::setGearRatio(int32_t teethMotor, int32_t teethLoad)
+{
+  _gearRatio = (float)teethMotor / (float)teethLoad;
+}
+
+// set feedrate per load turn (default 360)
 void StepperMC::setFeedConst(float feed)
 {
-  _feedConst = _stepsTurn / feed;
+  _feedConst = _stepsTurn / (feed * _gearRatio);
 }
 
 // invert direction

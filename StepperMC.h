@@ -19,8 +19,9 @@ public:
   void setZero();
   void adjustZero(int32_t steps);
   void setBacklash(int32_t steps);
+  void setGearRatio(int32_t motor, int32_t load);
   void setFeedConst(float feed);
-  void setModulo(uint16_t steps);
+  void setModulo(uint16_t steps = 0);
   void setUnlimited();
   void setPositionLimit(float lower, float upper);
   void setSpeed(uint16_t freq);
@@ -42,29 +43,34 @@ private:
     stp4Wire,
     stp2Wire
   } _interface;
+  bool _isModulo;
+  bool _isLimited;
+  bool _negDir;
   uint16_t _stepsTurn;
   int32_t _stepAct;
   int32_t _stepTarget;
   int32_t _backlash;
   int32_t _backlashAct;
   int32_t _stepMotor;
-  bool _isModulo;
-  bool _isLimited;
   int32_t _stepsModulo;
   int32_t _upperLimit;
   int32_t _lowerLimit;
   float _feedConst;
   float _gearRatio;
-  bool _negDir;
   // motor pin numbers
   uint8_t _pin1;
   uint8_t _pin2;
   uint8_t _pin3;
   uint8_t _pin4;
-  //timing
+  // timing
   unsigned long _delayPowersave;
   unsigned long _timeLastStep;
   unsigned long _delayStep;
+  enum {
+    dirStop,
+    dirPos,
+    dirNeg
+  } _direction;
   // ramp
   float _cycle;
   float _cycleMin;
@@ -72,12 +78,6 @@ private:
   float _rampConst;
   int32_t _rampStep;
   int32_t _stepsStop;
-  enum
-  {
-    dirStop,
-    dirPos,
-    dirNeg
-  } _direction;
 };
 
 #endif
