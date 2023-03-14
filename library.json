@@ -1,6 +1,6 @@
 {
   "name": "Stepper MotionControl",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "General purpose stepper library with advanced motion commands supporting engineering units",
   "keywords": "motion, stepper, arduino",
   "authors": [

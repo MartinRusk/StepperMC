@@ -17,6 +17,7 @@ public:
   bool inTarget();
   void stop();
   void setZero();
+  void setSpeed(uint16_t freqMax, uint16_t acc = 0);
   void adjustZero(int32_t steps);
   void setBacklash(int32_t steps);
   void setGearRatio(int32_t motor, int32_t load);
@@ -24,20 +25,17 @@ public:
   void setModulo(uint16_t steps = 0);
   void setUnlimited();
   void setPositionLimit(float lower, float upper);
-  void setSpeed(uint16_t freq);
-  void setSpeed(uint16_t freqMax, uint16_t acc);
   void reverseDir(bool neg);
   void setPowersaveTime(uint16_t seconds);
 
 private:
   void _init(uint16_t steps);
+  void _calcDelay();
+  int32_t _trimModulo(int32_t pos);
+  int32_t _diffModulo(int32_t diff);
   bool _stepUp();
   bool _stepDown();
   void _step();
-  int32_t _trimModulo(int32_t pos);
-  int32_t _diffModulo(int32_t diff);
-  void _calcDelay();
-  void _addBacklash();
   void _powerOff();
   enum {
     stp4Wire,

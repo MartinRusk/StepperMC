@@ -323,26 +323,37 @@ void StepperMC::setBacklash(int32_t steps)
   _backlash = steps;
 }
 
-// set constant speed
-void StepperMC::setSpeed(uint16_t freq)
+// set dynamic speed ramping, acc = 0 means constant speed
+// do not use during active movement
+void StepperMC::setSpeed(uint16_t freq, uint16_t acc)
 {
   if (freq > 0)
   {
-    _delayStep = 1000000UL / freq;
-    _rampConst = 0;
+    if (acc == 0)
+    {
+      _delayStep = 1000000UL / freq;
+      _rampConst = 0;
+    }
+    else
+    {
+      _cycleMin = 1e6 / (float)freq;
+      _cycleMax = 676e3 * sqrt(2.0 / ((float)acc));
+      _cycle = _cycleMax;
+      _rampConst = (5e11 / (float)acc);
+    }  
   }
 }
 
-// set dynamic speed ramping
-void StepperMC::setSpeed(uint16_t freq, uint16_t acc)
+// set gear ratio (set before setting feed constant and modulo!)
+void StepperMC::setGearRatio(int32_t teethMotor, int32_t teethLoad)
 {
-  if ((freq > 0) && (acc > 0))
-  {
-    _cycleMin = 1e6 / (float)freq;
-    _cycleMax = 676e3 * sqrt(2.0 / ((float)acc));
-    _cycle = _cycleMax;
-    _rampConst = (5e11 / (float)acc);
-  }
+  _gearRatio = (float)teethMotor / (float)teethLoad;
+}
+
+// set feedrate per load turn (default 360)
+void StepperMC::setFeedConst(float feed)
+{
+  _feedConst = _stepsTurn / (feed * _gearRatio);
 }
 
 // make this a modulo axis. 
@@ -379,18 +390,6 @@ void StepperMC::setPositionLimit(float lower, float upper)
   _isModulo = false;
   _lowerLimit = lower * _feedConst;
   _upperLimit = upper * _feedConst; 
-}
-
-// set gear ratio (set before setting feed constant and modulo!)
-void StepperMC::setGearRatio(int32_t teethMotor, int32_t teethLoad)
-{
-  _gearRatio = (float)teethMotor / (float)teethLoad;
-}
-
-// set feedrate per load turn (default 360)
-void StepperMC::setFeedConst(float feed)
-{
-  _feedConst = _stepsTurn / (feed * _gearRatio);
 }
 
 // invert direction
