@@ -5,6 +5,7 @@ class StepperMC
 {
 public:
   StepperMC(uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4, uint16_t steps = 4096);
+  StepperMC(uint8_t pinDir, uint8_t pinStep, uint16_t steps = 4096);
   void handle();
   void setIncrements(int32_t pos);
   void setIncrementsRelative(int32_t steps);
@@ -28,6 +29,7 @@ public:
   void setPowersaveTime(uint16_t seconds);
 
 private:
+  void _init(uint16_t steps);
   bool _stepUp();
   bool _stepDown();
   void _step();
@@ -36,6 +38,10 @@ private:
   void _calcDelay();
   void _addBacklash();
   void _powerOff();
+  enum {
+    stp4Wire,
+    stp2Wire
+  } _interface;
   uint16_t _stepsTurn;
   int32_t _stepAct;
   int32_t _stepTarget;

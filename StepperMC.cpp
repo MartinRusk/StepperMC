@@ -18,6 +18,42 @@ const uint8_t phase_scheme[8][4] =
 StepperMC::StepperMC(uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4, uint16_t steps)
 {
   // Initialize variables
+  _init(steps);
+  // Set Stepper interface
+  _interface = stp4Wire;
+  // Arduino pins for the motor control connection:
+  _pin1 = pin1;
+  _pin2 = pin2;
+  _pin3 = pin3;
+  _pin4 = pin4;
+  // setup the pins on the microcontroller:
+  pinMode(_pin1, OUTPUT);
+  pinMode(_pin2, OUTPUT);
+  pinMode(_pin3, OUTPUT);
+  pinMode(_pin4, OUTPUT);
+  // and start in idle mode
+  _powerOff();
+}
+
+// constructor
+StepperMC::StepperMC(uint8_t pinDir, uint8_t pinStep, uint16_t steps)
+{
+  // Initialize variables
+  _init(steps);
+  // Set Stepper interface
+  _interface = stp2Wire;
+  // Arduino pins for the motor control connection:
+  _pin1 = pinDir;
+  _pin2 = pinStep;
+  _pin3 = 255;
+  _pin4 = 255;
+  // setup the pins on the microcontroller:
+  pinMode(_pin1, OUTPUT);
+  pinMode(_pin2, OUTPUT);
+}
+
+void StepperMC::_init(uint16_t steps)
+{
   _stepAct = 0;
   _stepTarget = 0;
   _direction = dirStop;
@@ -41,21 +77,6 @@ StepperMC::StepperMC(uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4, uin
   _stepsStop = 0;
   _delayPowersave = 1000000;
   _timeLastStep = micros() + _delayStep;
-  
-  // Arduino pins for the motor control connection:
-  _pin1 = pin1;
-  _pin2 = pin2;
-  _pin3 = pin3;
-  _pin4 = pin4;
-
-  // setup the pins on the microcontroller:
-  pinMode(_pin1, OUTPUT);
-  pinMode(_pin2, OUTPUT);
-  pinMode(_pin3, OUTPUT);
-  pinMode(_pin4, OUTPUT);
-
-  // and start in idle mode
-  _powerOff();
 }
 
 // cyclic handle of motion (call in loop)
@@ -395,23 +416,37 @@ bool StepperMC::_stepDown()
 // execute one step
 void StepperMC::_step()
 {
-  int phase = (int)(_stepMotor & 0x07);
-  if (_negDir)
+  if (_interface == stp4Wire)
   {
-    // invert direction
-    phase = 7 - phase;
+    int phase = (int)(_stepMotor & 0x07);
+    if (_negDir)
+    {
+      // invert direction
+      phase = 7 - phase;
+    }
+    digitalWrite(_pin1, phase_scheme[phase][0]);
+    digitalWrite(_pin2, phase_scheme[phase][1]);
+    digitalWrite(_pin3, phase_scheme[phase][2]);
+    digitalWrite(_pin4, phase_scheme[phase][3]);
   }
-  digitalWrite(_pin1, phase_scheme[phase][0]);
-  digitalWrite(_pin2, phase_scheme[phase][1]);
-  digitalWrite(_pin3, phase_scheme[phase][2]);
-  digitalWrite(_pin4, phase_scheme[phase][3]);
+  else if (_interface == stp2Wire)
+  {
+    digitalWrite(_pin1, _direction == dirPos);
+    digitalWrite(_pin2, true);
+    delayMicroseconds(1);
+    digitalWrite(_pin2, false);
+  }
 }
 
 // switch power off
 void StepperMC::_powerOff()
 {
-  digitalWrite(_pin1, 0);
-  digitalWrite(_pin2, 0);
-  digitalWrite(_pin3, 0);
-  digitalWrite(_pin4, 0);
+  // powerOff is sensible only with 4 wire interface
+  if (_interface == stp4Wire)
+  {
+    digitalWrite(_pin1, 0);
+    digitalWrite(_pin2, 0);
+    digitalWrite(_pin3, 0);
+    digitalWrite(_pin4, 0);
+  }
 }
