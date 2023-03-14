@@ -1,5 +1,5 @@
-#ifndef Stepper_h
-#define Stepper_h
+#ifndef StepperMC_h
+#define StepperMC_h
 
 class StepperMC
 {
