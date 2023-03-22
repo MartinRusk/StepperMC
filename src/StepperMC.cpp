@@ -445,7 +445,7 @@ void StepperMC::_step()
   }
   else if (_interface == stp2Wire)
   {
-    digitalWrite(_pin1, _direction == dirPos);
+    digitalWrite(_pin1, _negDir ? (_direction == dirNeg) : (_direction == dirPos));
     digitalWrite(_pin2, true);
     delayMicroseconds(1);
     digitalWrite(_pin2, false);
