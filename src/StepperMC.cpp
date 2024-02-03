@@ -338,7 +338,6 @@ void StepperMC::setSpeed(uint16_t freq, uint16_t acc)
     {
       _cycleMin = 1e6 / (float)freq;
       _cycleMax = 676e3 * sqrt(2.0 / ((float)acc));
-      _cycle = _cycleMax;
       _rampConst = (5e11 / (float)acc);
     }  
   }
